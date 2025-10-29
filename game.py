@@ -4,7 +4,7 @@ import pgzrun
 # Configurações da janela
 WIDTH = 800
 HEIGHT = 400
-TITLE = "Alien Platformer 👽💣"
+TITLE = "Alien Platformer 👽💣🪙"
 
 # Ator principal
 alien = Actor("alien")
@@ -21,9 +21,10 @@ platforms = [
     Rect((600, 200), (100, 10))
 ]
 
-# Listas de inimigos e bombas
+# Listas de inimigos, bombas, moedas e explosões
 enemies = []
 bombs = []
+coins = []
 explosions = []
 
 # Variáveis do jogo
@@ -33,16 +34,21 @@ score = 0
 
 
 def spawn_enemy():
-    """Cria inimigos aleatórios, tipo 1 ou tipo 2."""
     tipo = random.choice(["enemy", "enemy2"])
     enemy = Actor(tipo)
     enemy.x = WIDTH + 50
     enemy.y = random.choice([300, 250, 200])
-    if tipo == "enemy":
-        enemy.speed = random.randint(2, 4)
-    else:
-        enemy.speed = random.randint(3, 5)  # inimigo2 é mais rápido
+    enemy.speed = random.randint(2, 4) if tipo == "enemy" else random.randint(3, 5)
     enemies.append(enemy)
+
+
+def spawn_coin():
+    """Cria uma moeda aleatória sobre uma plataforma"""
+    platform = random.choice(platforms[1:])  # evita chão
+    coin = Actor("coin")
+    coin.x = random.randint(platform.left + 10, platform.right - 10)
+    coin.y = platform.y - 20  # acima da plataforma
+    coins.append(coin)
 
 
 def draw():
@@ -59,6 +65,9 @@ def draw():
 
     for bomb in bombs:
         bomb.draw()
+
+    for coin in coins:
+        coin.draw()
 
     for (x, y, timer) in explosions:
         radius = 15 + (5 - timer) * 5
@@ -95,10 +104,7 @@ def update():
             alien.on_ground = True
 
     # Limites da tela
-    if alien.x < 0:
-        alien.x = 0
-    if alien.x > WIDTH:
-        alien.x = WIDTH
+    alien.x = max(0, min(WIDTH, alien.x))
 
     # Atualizar bombas
     for bomb in list(bombs):
@@ -129,16 +135,26 @@ def update():
         elif alien.colliderect(enemy):
             game_over = True
 
+    # Coletar moedas
+    for coin in list(coins):
+        if alien.colliderect(coin):
+            coins.remove(coin)
+            score += 5
+
     # Gerar inimigos aleatoriamente
-    if random.randint(0, 100) < 3:  # aumenta chance para mais inimigos
+    if random.randint(0, 100) < 3:
         spawn_enemy()
+
+    # Gerar moedas aleatoriamente
+    if random.randint(0, 100) < 2:
+        spawn_coin()
 
 
 def on_key_down(key):
     if key == keys.SPACE and alien.on_ground:
         alien.vy = -10  # pulo
     if key == keys.Z:
-        throw_bomb()  # lança bomba
+        throw_bomb()
     if key == keys.R and game_over:
         restart_game()
 
@@ -151,11 +167,12 @@ def throw_bomb():
 
 
 def restart_game():
-    global game_over, score, enemies, bombs, explosions
+    global game_over, score, enemies, bombs, coins, explosions
     game_over = False
     score = 0
     enemies = []
     bombs = []
+    coins = []
     explosions = []
     alien.x = 100
     alien.y = 300
@@ -164,4 +181,3 @@ def restart_game():
 
 
 pgzrun.go()
-
