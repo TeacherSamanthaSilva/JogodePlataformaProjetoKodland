@@ -18,16 +18,35 @@ selected_option = 0
 gravity = 0.5
 MAX_LIVES = 3
 
+# --- Frames do Alien ---
+ALIEN_FRAMES = [f"alien{i}" for i in range(1, 10)]
+ANIMATION_SPEED = 0.25
+
 # --- Classes ---
 class Player(Actor):
     def __init__(self):
-        super().__init__("alien")
+        super().__init__("alien1")
         self.x = 100
         self.y = 300
         self.vy = 0
         self.on_ground = False
         self.lives = MAX_LIVES
         self.score = 0
+        self.frame_index = 0
+        self.animating = False
+
+    def update_animation(self):
+        """Atualiza os frames do alien se ele estiver se movendo"""
+        if self.animating:
+            self.frame_index += ANIMATION_SPEED
+            if self.frame_index >= len(ALIEN_FRAMES):
+                self.frame_index = 0
+            self.image = ALIEN_FRAMES[int(self.frame_index)]
+        else:
+            # Parado — volta ao frame 1
+            self.image = "alien1"
+            self.frame_index = 0
+
 
 class Enemy(Actor):
     def __init__(self, kind, x, y, speed):
@@ -35,6 +54,7 @@ class Enemy(Actor):
         self.x = x
         self.y = y
         self.speed = speed
+
 
 class Bee(Actor):
     def __init__(self, x, y, speed, oscillation):
@@ -44,12 +64,14 @@ class Bee(Actor):
         self.speed = speed
         self.oscillation = oscillation
 
+
 class Bomb(Actor):
     def __init__(self, x, y):
         super().__init__("bomb")
         self.x = x
         self.y = y
         self.speed = 6
+
 
 # --- Criar jogador ---
 alien = Player()
@@ -134,12 +156,14 @@ def start_game():
     global game_state
     game_state = "playing"
     restart_game()
-    sounds.musica.play(-1)
+    if "musica" in sounds:
+        sounds.musica.play(-1)
 
 def throw_bomb():
     bomb = Bomb(alien.x + 20, alien.y)
     bombs.append(bomb)
-    sounds.bomb.play()
+    if "bomb" in sounds:
+        sounds.bomb.play()
 
 # --- Eventos de teclado ---
 def on_key_down(key):
@@ -158,7 +182,8 @@ def on_key_down(key):
     elif game_state == "playing":
         if key == keys.SPACE and alien.on_ground:
             alien.vy = -10
-            sounds.jump.play()
+            if "jump" in sounds:
+                sounds.jump.play()
         if key == keys.Z:
             throw_bomb()
         if key == keys.R and (game_over or victory):
@@ -193,10 +218,16 @@ def update():
     alien.vy += gravity
     alien.y += alien.vy
 
+    moving = False
     if keyboard.left:
         alien.x -= 4
+        moving = True
     if keyboard.right:
         alien.x += 4
+        moving = True
+
+    alien.animating = moving
+    alien.update_animation()
 
     # Colisão com plataformas
     alien.on_ground = False
@@ -211,8 +242,10 @@ def update():
     # Verificar vitória
     if alien.colliderect(flag) and not victory:
         victory = True
-        sounds.musica.stop()
-        sounds.victory.play()
+        if "musica" in sounds:
+            sounds.musica.stop()
+        if "victory" in sounds:
+            sounds.victory.play()
 
     # Atualizar bombas
     for bomb in list(bombs):
@@ -271,7 +304,8 @@ def update():
         if alien.colliderect(coin):
             coins.remove(coin)
             alien.score += 1
-            sounds.coin.play()
+            if "coin" in sounds:
+                sounds.coin.play()
 
     # Timers
     enemy_timer += 1
@@ -291,8 +325,10 @@ def update():
 def game_over_func():
     global game_over
     game_over = True
-    sounds.musica.stop()
-    sounds.gameover.play()
+    if "musica" in sounds:
+        sounds.musica.stop()
+    if "gameover" in sounds:
+        sounds.gameover.play()
 
 # --- Desenho ---
 def draw():
