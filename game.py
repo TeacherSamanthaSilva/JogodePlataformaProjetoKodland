@@ -2,21 +2,26 @@ import random
 import pgzrun
 import math
 
-# Configuracoes da janela
+# --- Configuracoes da janela ---
 WIDTH = 800
 HEIGHT = 400
 TITLE = "Alien Platformer"
 
-# Ator principal
+# --- Estado do jogo ---
+game_state = "menu"  # "menu", "instructions", "playing", "game_over", "victory"
+menu_options = ["Start", "Instructions", "Quit"]
+selected_option = 0
+
+# --- Alien ---
 alien = Actor("alien")
 alien.x = 100
 alien.y = 300
 alien.vy = 0
 alien.on_ground = False
 
-# Plataformas espalhadas
+# --- Plataformas ---
 platforms = [
-    Rect((0, 380), (WIDTH, 20)),      # chao
+    Rect((0, 380), (WIDTH, 20)),
     Rect((100, 320), (80, 10)),
     Rect((220, 280), (80, 10)),
     Rect((350, 240), (80, 10)),
@@ -27,19 +32,19 @@ platforms = [
     Rect((200, 100), (80, 10))
 ]
 
-# Bandeira do final da fase
+# --- Bandeira ---
 flag = Actor("flag")
 flag.x = WIDTH - 50
 flag.y = 150
 
-# Listas de inimigos, abelhas, bombas, moedas e explosoes
+# --- Objetos do jogo ---
 enemies = []
 bees = []
 bombs = []
 coins = []
 explosions = []
 
-# Variaveis do jogo
+# --- Variaveis ---
 gravity = 0.5
 game_over = False
 victory = False
@@ -47,15 +52,14 @@ score = 0
 MAX_LIVES = 3
 lives = MAX_LIVES
 
-# Timers de spawn (em frames)
+# --- Timers de spawn ---
 enemy_timer = 0
 bee_timer = 0
 coin_timer = 0
 
-# Intervalos de spawn (em frames)
-ENEMY_INTERVAL = 120  # inimigo a cada 2 segundos (60fps)
-BEE_INTERVAL = 180    # abelha a cada 3 segundos
-COIN_INTERVAL = 300   # moeda a cada 5 segundos
+ENEMY_INTERVAL = 120
+BEE_INTERVAL = 180
+COIN_INTERVAL = 300
 
 # --- Funcoes de spawn ---
 def spawn_enemy():
@@ -81,47 +85,70 @@ def spawn_coin():
     coin.y = platform.y - 20
     coins.append(coin)
 
-# --- Desenho ---
+# --- Funcoes principais ---
 def draw():
     screen.fill((20, 20, 40))
-    screen.draw.text(f"Score: {score}", (10, 10), color="white")
 
-    # Desenhar vidas
-    for i in range(lives):
-        screen.blit("heart", (10 + i*35, 40))  # imagem heart.png
+    if game_state == "menu":
+        screen.draw.text("ALIEN PLATFORMER", center=(WIDTH/2, 100), fontsize=60, color="yellow")
+        for i, option in enumerate(menu_options):
+            color = "red" if i == selected_option else "white"
+            screen.draw.text(option, center=(WIDTH/2, 200 + i*50), fontsize=40, color=color)
+        screen.draw.text("Use UP/DOWN to navigate, ENTER to select", center=(WIDTH/2, 350), fontsize=20, color="white")
 
-    for platform in platforms:
-        screen.draw.filled_rect(platform, (50, 150, 50))
+    elif game_state == "instructions":
+        screen.draw.text("INSTRUCTIONS", center=(WIDTH/2, 80), fontsize=50, color="yellow")
+        screen.draw.text("Arrow keys: Move left/right", center=(WIDTH/2, 150), fontsize=30, color="white")
+        screen.draw.text("SPACE: Jump", center=(WIDTH/2, 200), fontsize=30, color="white")
+        screen.draw.text("Z: Throw bomb", center=(WIDTH/2, 250), fontsize=30, color="white")
+        screen.draw.text("Collect coins, avoid enemies!", center=(WIDTH/2, 300), fontsize=25, color="white")
+        screen.draw.text("Press B to go back", center=(WIDTH/2, 350), fontsize=20, color="white")
 
-    flag.draw()
-    alien.draw()
+    elif game_state in ["playing", "game_over", "victory"]:
+        # Score
+        screen.draw.text(f"Score: {score}", (10, 10), color="white")
 
-    for enemy in enemies:
-        enemy.draw()
-    for bee in bees:
-        bee.draw()
-    for bomb in bombs:
-        bomb.draw()
-    for coin in coins:
-        coin.draw()
+        # Vidas
+        for i in range(lives):
+            screen.blit("heart", (10 + i*35, 40))
 
-    for (x, y, timer) in explosions:
-        radius = 15 + (5 - timer) * 5
-        screen.draw.filled_circle((x, y), radius, (255, 80, 0))
+        # Plataformas
+        for platform in platforms:
+            screen.draw.filled_rect(platform, (50, 150, 50))
 
-    if game_over:
-        screen.draw.text("GAME OVER", center=(WIDTH/2, HEIGHT/2), fontsize=60, color="red")
-        screen.draw.text("Press R to restart", center=(WIDTH/2, HEIGHT/2 + 50), fontsize=30, color="white")
+        # Bandeira e alien
+        flag.draw()
+        alien.draw()
 
-    if victory:
-        screen.draw.text("CONGRATS! LEVEL COMPLETE!", center=(WIDTH/2, HEIGHT/2), fontsize=50, color="yellow")
-        screen.draw.text(f"Final Score: {score}", center=(WIDTH/2, HEIGHT/2 + 50), fontsize=30, color="white")
-        screen.draw.text("Press R to restart", center=(WIDTH/2, HEIGHT/2 + 90), fontsize=25, color="white")
+        # Inimigos, abelhas, bombas, moedas
+        for enemy in enemies:
+            enemy.draw()
+        for bee in bees:
+            bee.draw()
+        for bomb in bombs:
+            bomb.draw()
+        for coin in coins:
+            coin.draw()
 
-# --- Atualizacao ---
+        # Explosoes
+        for (x, y, timer) in explosions:
+            radius = 15 + (5 - timer) * 5
+            screen.draw.filled_circle((x, y), radius, (255, 80, 0))
+
+        if game_over:
+            screen.draw.text("GAME OVER", center=(WIDTH/2, HEIGHT/2), fontsize=60, color="red")
+            screen.draw.text("Press R to restart", center=(WIDTH/2, HEIGHT/2 + 50), fontsize=30, color="white")
+
+        if victory:
+            screen.draw.text("CONGRATS! LEVEL COMPLETE!", center=(WIDTH/2, HEIGHT/2), fontsize=50, color="yellow")
+            screen.draw.text(f"Final Score: {score}", center=(WIDTH/2, HEIGHT/2 + 50), fontsize=30, color="white")
+            screen.draw.text("Press R to restart", center=(WIDTH/2, HEIGHT/2 + 90), fontsize=25, color="white")
+
 def update():
-    global game_over, score, victory
-    global enemy_timer, bee_timer, coin_timer, lives
+    global game_state, game_over, score, victory, enemy_timer, bee_timer, coin_timer, lives
+
+    if game_state != "playing":
+        return
 
     if game_over or victory:
         return
@@ -150,7 +177,7 @@ def update():
     if alien.colliderect(flag):
         victory = True
 
-    # Atualizar bombas
+    # Bombas
     for bomb in list(bombs):
         bomb.x += 6
         if bomb.x > WIDTH + 50:
@@ -171,13 +198,13 @@ def update():
                 score += 1
                 break
 
-    # Atualizar explosoes
+    # Explosoes
     for exp in list(explosions):
         exp[2] -= 1
         if exp[2] <= 0:
             explosions.remove(exp)
 
-    # Movimentar inimigos
+    # Inimigos
     for enemy in list(enemies):
         enemy.x -= enemy.speed
         if enemy.x < -50:
@@ -189,7 +216,7 @@ def update():
             if lives <= 0:
                 game_over = True
 
-    # Movimentar abelhas
+    # Abelhas
     for bee in bees:
         bee.x -= bee.speed
         bee.y += math.sin(bee.oscillation) * 2
@@ -202,13 +229,13 @@ def update():
             if lives <= 0:
                 game_over = True
 
-    # Coletar moedas
+    # Moedas
     for coin in list(coins):
         if alien.colliderect(coin):
             coins.remove(coin)
             score += 1
 
-    # Atualizar timers e spawnar inimigos, abelhas e moedas
+    # Timers
     enemy_timer += 1
     bee_timer += 1
     coin_timer += 1
@@ -216,48 +243,76 @@ def update():
     if enemy_timer >= ENEMY_INTERVAL:
         spawn_enemy()
         enemy_timer = 0
-
     if bee_timer >= BEE_INTERVAL:
         spawn_bee()
         bee_timer = 0
-
     if coin_timer >= COIN_INTERVAL:
         spawn_coin()
         coin_timer = 0
 
-# --- Eventos ---
+# --- Eventos de teclado ---
 def on_key_down(key):
-    if key == keys.SPACE and alien.on_ground:
-        alien.vy = -10
-    if key == keys.Z:
-        throw_bomb()
-    if key == keys.R and (game_over or victory):
-        restart_game()
+    global selected_option, game_state
 
+    if game_state == "menu":
+        if key == keys.UP:
+            selected_option = (selected_option - 1) % len(menu_options)
+        elif key == keys.DOWN:
+            selected_option = (selected_option + 1) % len(menu_options)
+        elif key == keys.RETURN:
+            if menu_options[selected_option] == "Start":
+                start_game()
+            elif menu_options[selected_option] == "Instructions":
+                game_state = "instructions"
+            elif menu_options[selected_option] == "Quit":
+                quit()
+    elif game_state == "instructions":
+        if key == keys.B:
+            game_state = "menu"
+    elif game_state == "playing":
+        if key == keys.SPACE and alien.on_ground:
+            alien.vy = -10
+        if key == keys.Z:
+            throw_bomb()
+        if key == keys.R and (game_over or victory):
+            restart_game()
+
+# --- Funcoes do jogo ---
 def throw_bomb():
     bomb = Actor("bomb")
     bomb.x = alien.x + 20
     bomb.y = alien.y
     bombs.append(bomb)
 
+def start_game():
+    global game_state
+    game_state = "playing"
+    restart_game()
+
 def restart_game():
-    global game_over, score, enemies, bees, bombs, coins, explosions, victory, lives
+    global game_over, victory, score, lives
+    global enemies, bees, bombs, coins, explosions
     global enemy_timer, bee_timer, coin_timer
+
     game_over = False
     victory = False
     score = 0
     lives = MAX_LIVES
+
     enemies = []
     bees = []
     bombs = []
     coins = []
     explosions = []
+
     alien.x = 100
     alien.y = 300
     alien.vy = 0
     alien.on_ground = False
+
     enemy_timer = 0
     bee_timer = 0
     coin_timer = 0
 
+# --- Iniciar jogo ---
 pgzrun.go()
