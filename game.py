@@ -33,7 +33,6 @@ score = 0
 
 
 def spawn_enemy():
-    """Cria um inimigo que se move da direita para a esquerda."""
     enemy = Actor("enemy")
     enemy.x = WIDTH + 50
     enemy.y = random.choice([300, 250, 200])
@@ -131,14 +130,15 @@ def update():
 
 
 def on_key_down(key):
-    if key == keys.SPACE:
-        throw_bomb()
+    if key == keys.SPACE and alien.on_ground:
+        alien.vy = -10  # pulo
+    if key == keys.Z:
+        throw_bomb()  # lança bomba
     if key == keys.R and game_over:
         restart_game()
 
 
 def throw_bomb():
-    """Lança uma bomba na frente do alien."""
     bomb = Actor("bomb")
     bomb.x = alien.x + 20
     bomb.y = alien.y
