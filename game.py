@@ -33,10 +33,15 @@ score = 0
 
 
 def spawn_enemy():
-    enemy = Actor("enemy")
+    """Cria inimigos aleatórios, tipo 1 ou tipo 2."""
+    tipo = random.choice(["enemy", "enemy2"])
+    enemy = Actor(tipo)
     enemy.x = WIDTH + 50
     enemy.y = random.choice([300, 250, 200])
-    enemy.speed = random.randint(2, 4)
+    if tipo == "enemy":
+        enemy.speed = random.randint(2, 4)
+    else:
+        enemy.speed = random.randint(3, 5)  # inimigo2 é mais rápido
     enemies.append(enemy)
 
 
@@ -125,7 +130,7 @@ def update():
             game_over = True
 
     # Gerar inimigos aleatoriamente
-    if random.randint(0, 100) < 2:
+    if random.randint(0, 100) < 3:  # aumenta chance para mais inimigos
         spawn_enemy()
 
 
@@ -159,3 +164,4 @@ def restart_game():
 
 
 pgzrun.go()
+
