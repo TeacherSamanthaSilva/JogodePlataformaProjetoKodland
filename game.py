@@ -59,8 +59,6 @@ class Alien:
         self.vy = 0
         self.on_ground = False
         self.lives = MAX_LIVES
-        self.sprite_index = 0
-        self.sprites = ["alien", "alien2"]  # exemplo de animação
 
     def update(self):
         self.vy += gravity
@@ -68,10 +66,8 @@ class Alien:
 
         if keyboard.left:
             self.actor.x -= 4
-            self.animate()
         if keyboard.right:
             self.actor.x += 4
-            self.animate()
 
         self.on_ground = False
         for platform in platforms:
@@ -88,11 +84,6 @@ class Alien:
             if sounds_on:
                 sounds.jump.play()
 
-    def animate(self):
-        # alterna entre sprites a cada movimento
-        self.sprite_index = (self.sprite_index + 1) % len(self.sprites)
-        self.actor.image = self.sprites[self.sprite_index]
-
     def draw(self):
         self.actor.draw()
 
@@ -105,8 +96,6 @@ class Enemy:
         self.actor.y = platform.y - 40
         self.direction = random.choice([-1, 1])
         self.speed = random.randint(2, 4) if tipo == "enemy" else random.randint(3, 5)
-        self.sprites = [tipo, f"{tipo}2"]
-        self.sprite_index = 0
 
     def update(self):
         self.actor.x += self.speed * self.direction
@@ -116,11 +105,6 @@ class Enemy:
         elif self.actor.x > self.platform.right - 10:
             self.actor.x = self.platform.right - 10
             self.direction *= -1
-        self.animate()
-
-    def animate(self):
-        self.sprite_index = (self.sprite_index + 1) % len(self.sprites)
-        self.actor.image = self.sprites[self.sprite_index]
 
     def draw(self):
         self.actor.draw()
@@ -138,8 +122,6 @@ class Bee:
         self.speed = random.uniform(2, 3)
         self.oscillation = random.uniform(0, math.pi * 2)
         self.direction = random.choice([-1, 1])
-        self.sprites = ["bee", "bee2"]
-        self.sprite_index = 0
 
     def update(self):
         self.actor.x += self.speed * self.direction
@@ -156,12 +138,6 @@ class Bee:
             self.actor.y = self.y_min
         elif self.actor.y > self.y_max:
             self.actor.y = self.y_max
-
-        self.animate()
-
-    def animate(self):
-        self.sprite_index = (self.sprite_index + 1) % len(self.sprites)
-        self.actor.image = self.sprites[self.sprite_index]
 
     def draw(self):
         self.actor.draw()
