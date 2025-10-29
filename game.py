@@ -290,6 +290,7 @@ def start_game():
     global game_state
     game_state = "playing"
     restart_game()
+    sounds.musica.play(-1)  # Música de fundo em loop
 
 def restart_game():
     global game_over, victory, score, lives
