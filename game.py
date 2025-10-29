@@ -99,7 +99,6 @@ def draw():
     if game_state == "menu":
         screen.draw.text("ALIEN PLATFORMER", center=(WIDTH/2, 80), fontsize=60, color="yellow")
 
-        # Desenhar botões
         for name, rect in menu_buttons.items():
             if name == "Music":
                 color = "green" if music_on else "red"
@@ -107,7 +106,6 @@ def draw():
             else:
                 color = "white"
                 text = name
-
             screen.draw.filled_rect(rect, (50, 50, 50))
             screen.draw.text(text, center=rect.center, fontsize=35, color=color)
 
@@ -156,10 +154,7 @@ def draw():
 def update():
     global game_state, game_over, score, victory, enemy_timer, bee_timer, coin_timer, lives
 
-    if game_state != "playing":
-        return
-
-    if game_over or victory:
+    if game_state != "playing" or game_over or victory:
         return
 
     alien.vy += gravity
@@ -266,9 +261,9 @@ def update():
 
 # --- Eventos de teclado ---
 def on_key_down(key):
+    global game_state
     if game_state == "instructions":
         if key == keys.B:
-            global game_state
             game_state = "menu"
     elif game_state == "playing":
         if key == keys.SPACE and alien.on_ground:
@@ -287,11 +282,8 @@ def on_mouse_down(pos):
     if game_state != "menu":
         return
 
-    # Start
     if menu_buttons["Start"].collidepoint(pos):
         start_game()
-
-    # Music toggle
     elif menu_buttons["Music"].collidepoint(pos):
         music_on = not music_on
         sounds_on = music_on
@@ -299,8 +291,6 @@ def on_mouse_down(pos):
             sounds.musica.play(-1)
         else:
             sounds.musica.stop()
-
-    # Quit
     elif menu_buttons["Quit"].collidepoint(pos):
         quit()
 
