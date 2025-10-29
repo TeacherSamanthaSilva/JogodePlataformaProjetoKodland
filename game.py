@@ -72,17 +72,25 @@ COIN_INTERVAL = 300
 def spawn_enemy():
     tipo = random.choice(["enemy", "enemy2"])
     enemy = Actor(tipo)
-    enemy.x = WIDTH + 50
-    enemy.y = random.choice([platform.y - 40 for platform in platforms if platform.y >= 240])
+    platform = random.choice([p for p in platforms if p.y >= 240])
+    enemy.platform = platform
+    enemy.x = platform.left + 20
+    enemy.y = platform.y - 40
+    enemy.direction = random.choice([-1, 1])
     enemy.speed = random.randint(2, 4) if tipo == "enemy" else random.randint(3, 5)
     enemies.append(enemy)
 
 def spawn_bee():
     bee = Actor("bee")
-    bee.x = WIDTH + 50
-    bee.y = random.randint(100, 250)
+    bee.x_min = 400
+    bee.x_max = 700
+    bee.y_min = 100
+    bee.y_max = 250
+    bee.x = random.randint(bee.x_min, bee.x_max)
+    bee.y = random.randint(bee.y_min, bee.y_max)
     bee.speed = random.uniform(2, 3)
     bee.oscillation = random.uniform(0, math.pi * 2)
+    bee.direction = random.choice([-1, 1])
     bees.append(bee)
 
 def spawn_coin():
@@ -207,12 +215,17 @@ def update():
         if exp[2] <= 0:
             explosions.remove(exp)
 
+    # --- Inimigos terrestres com território ---
     for enemy in list(enemies):
-        enemy.x -= enemy.speed
-        if enemy.x < -50:
-            enemies.remove(enemy)
-            score += 1
-        elif alien.colliderect(enemy):
+        enemy.x += enemy.speed * enemy.direction
+        if enemy.x < enemy.platform.left + 10:
+            enemy.x = enemy.platform.left + 10
+            enemy.direction *= -1
+        elif enemy.x > enemy.platform.right - 10:
+            enemy.x = enemy.platform.right - 10
+            enemy.direction *= -1
+
+        if alien.colliderect(enemy):
             lives -= 1
             enemies.remove(enemy)
             if lives <= 0 and not game_over:
@@ -222,13 +235,23 @@ def update():
                 if sounds_on:
                     sounds.gameover.play()
 
-    for bee in bees:
-        bee.x -= bee.speed
+    # --- Abelhas com território ---
+    for bee in list(bees):
+        bee.x += bee.speed * bee.direction
         bee.y += math.sin(bee.oscillation) * 2
         bee.oscillation += 0.1
-        if bee.x < -50:
-            bees.remove(bee)
-        elif alien.colliderect(bee):
+        if bee.x < bee.x_min:
+            bee.x = bee.x_min
+            bee.direction *= -1
+        elif bee.x > bee.x_max:
+            bee.x = bee.x_max
+            bee.direction *= -1
+        if bee.y < bee.y_min:
+            bee.y = bee.y_min
+        elif bee.y > bee.y_max:
+            bee.y = bee.y_max
+
+        if alien.colliderect(bee):
             lives -= 1
             bees.remove(bee)
             if lives <= 0 and not game_over:
@@ -238,6 +261,7 @@ def update():
                 if sounds_on:
                     sounds.gameover.play()
 
+    # --- Moedas ---
     for coin in list(coins):
         if alien.colliderect(coin):
             coins.remove(coin)
@@ -245,6 +269,7 @@ def update():
             if sounds_on:
                 sounds.coin.play()
 
+    # --- Timers ---
     enemy_timer += 1
     bee_timer += 1
     coin_timer += 1
@@ -278,7 +303,6 @@ def on_key_down(key):
 # --- Eventos de mouse ---
 def on_mouse_down(pos):
     global game_state, music_on, sounds_on
-
     if game_state != "menu":
         return
 
