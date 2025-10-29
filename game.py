@@ -233,7 +233,7 @@ def update():
         if alien.colliderect(coin):
             coins.remove(coin)
             score += 1
-            sounds.coin.play()  # Toca o som ao coletar a moeda
+            sounds.coin.play()  # Som da moeda
 
     # Timers
     enemy_timer += 1
@@ -272,6 +272,7 @@ def on_key_down(key):
     elif game_state == "playing":
         if key == keys.SPACE and alien.on_ground:
             alien.vy = -10
+            sounds.jump.play()  # Som do pulo
         if key == keys.Z:
             throw_bomb()
         if key == keys.R and (game_over or victory):
@@ -283,7 +284,7 @@ def throw_bomb():
     bomb.x = alien.x + 20
     bomb.y = alien.y
     bombs.append(bomb)
-    sounds.bomb.play()  # Toca o som da bomba
+    sounds.bomb.play()  # Som da bomba
 
 def start_game():
     global game_state
