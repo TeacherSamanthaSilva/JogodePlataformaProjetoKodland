@@ -5,7 +5,7 @@ import math
 # --- Configurações da janela ---
 WIDTH = 800
 HEIGHT = 400
-TITLE = "Alien Platformer"
+TITLE = "Batalha Alien"
 
 # --- Estado do jogo ---
 game_state = "menu"  # "menu", "instructions", "playing", "game_over", "victory"
