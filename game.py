@@ -1,6 +1,7 @@
 import random
 import pgzrun
 import math
+import pygame
 
 # --- Configurações da janela ---
 WIDTH = 800
