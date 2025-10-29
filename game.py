@@ -2,7 +2,7 @@ import random
 import pgzrun
 import math
 
-# --- Configuracoes da janela ---
+# --- Configurações da janela ---
 WIDTH = 800
 HEIGHT = 400
 TITLE = "Alien Platformer"
@@ -44,7 +44,7 @@ bombs = []
 coins = []
 explosions = []
 
-# --- Variaveis ---
+# --- Variáveis ---
 gravity = 0.5
 game_over = False
 victory = False
@@ -61,7 +61,7 @@ ENEMY_INTERVAL = 120
 BEE_INTERVAL = 180
 COIN_INTERVAL = 300
 
-# --- Funcoes de spawn ---
+# --- Funções de spawn ---
 def spawn_enemy():
     tipo = random.choice(["enemy", "enemy2"])
     enemy = Actor(tipo)
@@ -85,7 +85,7 @@ def spawn_coin():
     coin.y = platform.y - 20
     coins.append(coin)
 
-# --- Funcoes principais ---
+# --- Funções principais ---
 def draw():
     screen.fill((20, 20, 40))
 
@@ -105,7 +105,6 @@ def draw():
         screen.draw.text("Press B to go back", center=(WIDTH/2, 350), fontsize=20, color="white")
 
     elif game_state in ["playing", "game_over", "victory"]:
-        # Score
         screen.draw.text(f"Score: {score}", (10, 10), color="white")
 
         # Vidas
@@ -130,7 +129,7 @@ def draw():
         for coin in coins:
             coin.draw()
 
-        # Explosoes
+        # Explosões
         for (x, y, timer) in explosions:
             radius = 15 + (5 - timer) * 5
             screen.draw.filled_circle((x, y), radius, (255, 80, 0))
@@ -154,7 +153,7 @@ def update():
         return
 
     # Gravidade e movimento vertical
-    alien.vy += gravity
+    alien.vy += 0.5
     alien.y += alien.vy
 
     # Movimento lateral
@@ -163,7 +162,7 @@ def update():
     if keyboard.right:
         alien.x += 4
 
-    # Colisao com plataformas
+    # Colisão com plataformas
     alien.on_ground = False
     for platform in platforms:
         if alien.colliderect(platform) and alien.vy >= 0:
@@ -198,7 +197,7 @@ def update():
                 score += 1
                 break
 
-    # Explosoes
+    # Explosões
     for exp in list(explosions):
         exp[2] -= 1
         if exp[2] <= 0:
@@ -234,6 +233,7 @@ def update():
         if alien.colliderect(coin):
             coins.remove(coin)
             score += 1
+            sounds.coin.play()  # Toca o som ao coletar a moeda
 
     # Timers
     enemy_timer += 1
@@ -277,12 +277,13 @@ def on_key_down(key):
         if key == keys.R and (game_over or victory):
             restart_game()
 
-# --- Funcoes do jogo ---
+# --- Funções ---
 def throw_bomb():
     bomb = Actor("bomb")
     bomb.x = alien.x + 20
     bomb.y = alien.y
     bombs.append(bomb)
+    sounds.bomb.play()  # Toca o som da bomba
 
 def start_game():
     global game_state
@@ -314,5 +315,5 @@ def restart_game():
     bee_timer = 0
     coin_timer = 0
 
-# --- Iniciar jogo ---
+# --- Iniciar o jogo ---
 pgzrun.go()
