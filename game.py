@@ -1,431 +1,188 @@
-import random
 import pgzrun
-import math
 import pygame
+import random
+import math
 
-# --- Configurações da janela ---
+# ===================== #
+# --- GAME SETTINGS --- #
+# ===================== #
+
 WIDTH = 800
-HEIGHT = 400
-TITLE = "Alien Platformer"
+HEIGHT = 600
+GRAVITY = 0.5
+JUMP_FORCE = -10
 
-# --- Estado do jogo ---
-game_state = "menu"
-music_on = True
-sounds_on = True
+# ===================== #
+# --- GAME VARIABLES --- #
+# ===================== #
 
-# --- Menu ---
-menu_buttons = {
-    "Start": Rect((WIDTH//2 - 100, 150), (200, 50)),
-    "Music": Rect((WIDTH//2 - 100, 220), (200, 50)),
-    "Quit": Rect((WIDTH//2 - 100, 290), (200, 50))
-}
+background_music = "musica"
+pygame.mixer.init()
+pygame.mixer.music.load("sounds/musica.ogg")
+pygame.mixer.music.set_volume(0.5)
+pygame.mixer.music.play(-1)
 
-# --- Plataformas ---
-platforms = [
-    Rect((0, 380), (WIDTH, 20)),
-    Rect((100, 320), (80, 10)),
-    Rect((220, 280), (80, 10)),
-    Rect((350, 240), (80, 10)),
-    Rect((500, 300), (100, 10)),
-    Rect((650, 260), (80, 10)),
-    Rect((720, 200), (60, 10)),
-    Rect((400, 160), (80, 10)),
-    Rect((200, 100), (80, 10))
-]
 
-# --- Bandeira ---
-flag = Actor("flag")
-flag.x = WIDTH - 50
-flag.y = 150
+# ===================== #
+# --- HERO CLASS --- #
+# ===================== #
 
-# --- Variáveis ---
-gravity = 0.5
-score = 0
-MAX_LIVES = 3
-lives = MAX_LIVES
-enemy_timer = 0
-bee_timer = 0
-coin_timer = 0
+class Hero:
+    """Main player character that can move, jump, and animate."""
 
-ENEMY_INTERVAL = 120
-BEE_INTERVAL = 180
-COIN_INTERVAL = 300
-
-# ===========================================================
-# CLASSES
-# ===========================================================
-
-class Alien:
-    def __init__(self):
-        self.actor = Actor("alien1")
-        self.actor.x = 100
-        self.actor.y = 300
-        self.vy = 0
+    def __init__(self, x, y):
+        self.sprites = [f"alien{i}" for i in range(1, 10)]
+        self.actor = Actor(self.sprites[0], (x, y))
+        self.velocity_y = 0
         self.on_ground = False
-        self.lives = MAX_LIVES
-        # animação
-        self.frames = [f"alien{i}" for i in range(1, 10)]
         self.frame_index = 0
         self.frame_timer = 0
-        self.frame_speed = 0.15  # velocidade da troca de sprite
+        self.direction = 1  # 1 right, -1 left
 
     def update(self):
-        self.vy += gravity
-        self.actor.y += self.vy
+        """Update hero movement and gravity."""
+        self.apply_gravity()
+        self.handle_input()
+        self.animate()
+        self.actor.angle = math.sin(pygame.time.get_ticks() / 500) * 2  # breathing animation
 
-        moving = False
+    def apply_gravity(self):
+        """Apply gravity and handle floor collision."""
+        self.velocity_y += GRAVITY
+        self.actor.y += self.velocity_y
+
+        if self.actor.y > HEIGHT - 50:
+            self.actor.y = HEIGHT - 50
+            self.velocity_y = 0
+            self.on_ground = True
+
+    def handle_input(self):
+        """Handle keyboard input for movement and jump."""
         if keyboard.left:
             self.actor.x -= 4
-            moving = True
+            self.direction = -1
         if keyboard.right:
             self.actor.x += 4
-            moving = True
+            self.direction = 1
+        if keyboard.space and self.on_ground:
+            self.velocity_y = JUMP_FORCE
+            self.on_ground = False
+            sounds.jump.play()
 
-        self.on_ground = False
-        for platform in platforms:
-            if self.actor.colliderect(platform) and self.vy >= 0:
-                self.actor.y = platform.y - 40
-                self.vy = 0
-                self.on_ground = True
-
-        self.actor.x = max(0, min(WIDTH, self.actor.x))
-
-        # animação
-        self.frame_timer += self.frame_speed
-        if self.frame_timer >= 1:
+    def animate(self):
+        """Animate hero movement and idle frames."""
+        self.frame_timer += 1
+        if self.frame_timer >= 6:
             self.frame_timer = 0
-            self.frame_index = (self.frame_index + 1) % len(self.frames)
-            self.actor.image = self.frames[self.frame_index]
+            self.frame_index = (self.frame_index + 1) % len(self.sprites)
+            self.actor.image = self.sprites[self.frame_index]
 
-        # olhar para a direção
-        if moving:
-            self.actor.angle = 0
-        else:
-            self.actor.angle = math.sin(pygame.time.get_ticks() / 500) * 2  # leve respiração
-
-    def jump(self):
-        if self.on_ground:
-            self.vy = -10
-            if sounds_on:
-                sounds.jump.play()
+        self.actor.angle = math.sin(pygame.time.get_ticks() / 400) * 2
+        self.actor.flip_x = self.direction == -1
 
     def draw(self):
+        """Draw hero on screen."""
         self.actor.draw()
 
+
+# ===================== #
+# --- ENEMY CLASS --- #
+# ===================== #
 
 class Enemy:
-    def __init__(self, tipo, platform):
-        self.platform = platform
-        self.tipo = tipo
-        self.actor = Actor(f"{tipo}1")
-        self.actor.x = platform.left + 20
-        self.actor.y = platform.y - 40
-        self.direction = random.choice([-1, 1])
-        self.speed = random.randint(2, 4)
-        # animação
-        self.frames = [f"{tipo}{i}" for i in range(1, 10)]
+    """Enemy that moves and animates within a defined area."""
+
+    def __init__(self, name, x, y, left_limit, right_limit, speed=2):
+        self.sprites = [f"{name}{i}" for i in range(1, 10)]
+        self.actor = Actor(self.sprites[0], (x, y))
+        self.left_limit = left_limit
+        self.right_limit = right_limit
+        self.speed = speed
+        self.direction = 1
         self.frame_index = 0
         self.frame_timer = 0
-        self.frame_speed = 0.15
 
     def update(self):
-        # movimento lateral
+        """Move and animate the enemy."""
         self.actor.x += self.speed * self.direction
-        if self.actor.x < self.platform.left + 10:
-            self.actor.x = self.platform.left + 10
-            self.direction *= -1
-        elif self.actor.x > self.platform.right - 10:
-            self.actor.x = self.platform.right - 10
+        if self.actor.x < self.left_limit or self.actor.x > self.right_limit:
             self.direction *= -1
 
-        # animação
-        self.frame_timer += self.frame_speed
-        if self.frame_timer >= 1:
+        self.animate()
+
+    def animate(self):
+        """Cycle through animation frames."""
+        self.frame_timer += 1
+        if self.frame_timer >= 8:
             self.frame_timer = 0
-            self.frame_index = (self.frame_index + 1) % len(self.frames)
-            self.actor.image = self.frames[self.frame_index]
+            self.frame_index = (self.frame_index + 1) % len(self.sprites)
+            self.actor.image = self.sprites[self.frame_index]
+            self.actor.flip_x = self.direction == -1
 
     def draw(self):
+        """Draw enemy on screen."""
         self.actor.draw()
 
 
-class Bee:
-    def __init__(self):
-        self.actor = Actor("bee1")
-        self.x_min = 400
-        self.x_max = 700
-        self.y_min = 100
-        self.y_max = 250
-        self.actor.x = random.randint(self.x_min, self.x_max)
-        self.actor.y = random.randint(self.y_min, self.y_max)
-        self.speed = random.uniform(2, 3)
-        self.oscillation = random.uniform(0, math.pi * 2)
-        self.direction = random.choice([-1, 1])
-        # animação
-        self.frames = ["bee1", "bee2", "bee3"]
-        self.frame_index = 0
-        self.frame_timer = 0
-        self.frame_speed = 0.2
+# ===================== #
+# --- SETUP OBJECTS --- #
+# ===================== #
 
-    def update(self):
-        self.actor.x += self.speed * self.direction
-        self.actor.y += math.sin(self.oscillation) * 2
-        self.oscillation += 0.1
+alien = Hero(100, HEIGHT - 50)
+enemies = [
+    Enemy("purple_enemy", 300, HEIGHT - 50, 250, 500, speed=2),
+    Enemy("pink_enemy", 600, HEIGHT - 50, 550, 750, speed=3),
+    Enemy("bee", 400, HEIGHT - 200, 350, 700, speed=4)
+]
 
-        if self.actor.x < self.x_min:
-            self.actor.x = self.x_min
-            self.direction *= -1
-        elif self.actor.x > self.x_max:
-            self.actor.x = self.x_max
-            self.direction *= -1
-
-        # animação
-        self.frame_timer += self.frame_speed
-        if self.frame_timer >= 1:
-            self.frame_timer = 0
-            self.frame_index = (self.frame_index + 1) % len(self.frames)
-            self.actor.image = self.frames[self.frame_index]
-
-    def draw(self):
-        self.actor.draw()
-
-
-class Bomb:
-    def __init__(self, x, y):
-        self.actor = Actor("bomb")
-        self.actor.x = x + 20
-        self.actor.y = y
-        if sounds_on:
-            sounds.bomb.play()
-
-    def update(self):
-        self.actor.x += 6
-
-    def draw(self):
-        self.actor.draw()
-
-
-class Coin:
-    def __init__(self, platform):
-        self.actor = Actor("coin")
-        self.actor.x = random.randint(platform.left + 10, platform.right - 10)
-        self.actor.y = platform.y - 20
-
-    def draw(self):
-        self.actor.draw()
-
-# ===========================================================
-# FUNÇÕES DO JOGO
-# ===========================================================
-
-alien = Alien()
-enemies = []
-bees = []
-bombs = []
-coins = []
-explosions = []
-game_over = False
-victory = False
-
-def spawn_enemy():
-    platform = random.choice([p for p in platforms if p.y >= 240])
-    tipo = random.choice(["enemyroxo", "enemyrosa"])
-    enemies.append(Enemy(tipo, platform))
-
-def spawn_bee():
-    bees.append(Bee())
-
-def spawn_coin():
-    platform = random.choice(platforms[1:])
-    coins.append(Coin(platform))
-
-def throw_bomb():
-    bombs.append(Bomb(alien.actor.x, alien.actor.y))
-
-def restart_game():
-    global game_over, victory, score, lives
-    global enemies, bees, bombs, coins, explosions
-    global enemy_timer, bee_timer, coin_timer
-    game_over = False
-    victory = False
-    score = 0
-    lives = MAX_LIVES
-    enemies = []
-    bees = []
-    bombs = []
-    coins = []
-    explosions = []
-    alien.actor.x = 100
-    alien.actor.y = 300
-    alien.vy = 0
-    alien.on_ground = False
-    enemy_timer = 0
-    bee_timer = 0
-    coin_timer = 0
-
-def start_game():
-    global game_state
-    game_state = "playing"
-    restart_game()
-    if music_on:
-        sounds.musica.play(-1)
-
-# ===========================================================
-# EVENTOS
-# ===========================================================
-
-def on_key_down(key):
-    global game_state, game_over, victory
-    if game_state == "instructions":
-        if key == keys.B:
-            game_state = "menu"
-    elif game_state == "playing":
-        if key == keys.SPACE:
-            alien.jump()
-        if key == keys.Z:
-            throw_bomb()
-        if key == keys.R and (game_over or victory):
-            restart_game()
-
-def on_mouse_down(pos):
-    global game_state, music_on, sounds_on
-    if game_state != "menu":
-        return
-    if menu_buttons["Start"].collidepoint(pos):
-        start_game()
-    elif menu_buttons["Music"].collidepoint(pos):
-        music_on = not music_on
-        sounds_on = music_on
-        if music_on:
-            sounds.musica.play(-1)
-        else:
-            sounds.musica.stop()
-    elif menu_buttons["Quit"].collidepoint(pos):
-        quit()
-
-# ===========================================================
-# UPDATE
-# ===========================================================
+# ===================== #
+# --- GAME STATES --- #
+# ===================== #
 
 def update():
-    global enemy_timer, bee_timer, coin_timer, game_over, victory, score, lives
-    if game_state != "playing" or game_over or victory:
-        return
-
-    alien.update()
-
-    for enemy in list(enemies):
-        enemy.update()
-        if alien.actor.colliderect(enemy.actor):
-            lives -= 1
-            enemies.remove(enemy)
-            if lives <= 0:
-                game_over = True
-                if music_on:
-                    sounds.musica.stop()
-                if sounds_on:
-                    sounds.gameover.play()
-
-    for bee in list(bees):
-        bee.update()
-        if alien.actor.colliderect(bee.actor):
-            lives -= 1
-            bees.remove(bee)
-            if lives <= 0:
-                game_over = True
-                if music_on:
-                    sounds.musica.stop()
-                if sounds_on:
-                    sounds.gameover.play()
-
-    for bomb in list(bombs):
-        bomb.update()
-        if bomb.actor.x > WIDTH + 50:
-            bombs.remove(bomb)
-        for enemy in list(enemies):
-            if bomb.actor.colliderect(enemy.actor):
-                explosions.append([enemy.actor.x, enemy.actor.y, 5])
-                enemies.remove(enemy)
-                bombs.remove(bomb)
-                score += 1
-                break
-        for bee in list(bees):
-            if bomb.actor.colliderect(bee.actor):
-                explosions.append([bee.actor.x, bee.actor.y, 5])
-                bees.remove(bee)
-                bombs.remove(bomb)
-                score += 1
-                break
-
-    for exp in list(explosions):
-        exp[2] -= 1
-        if exp[2] <= 0:
-            explosions.remove(exp)
-
-    for coin in list(coins):
-        if alien.actor.colliderect(coin.actor):
-            coins.remove(coin)
-            score += 1
-            if sounds_on:
-                sounds.coin.play()
-
-    enemy_timer += 1
-    bee_timer += 1
-    coin_timer += 1
-
-    if enemy_timer >= ENEMY_INTERVAL:
-        spawn_enemy()
-        enemy_timer = 0
-    if bee_timer >= BEE_INTERVAL:
-        spawn_bee()
-        bee_timer = 0
-    if coin_timer >= COIN_INTERVAL:
-        spawn_coin()
-        coin_timer = 0
-
-# ===========================================================
-# DRAW
-# ===========================================================
+    """Main update loop controlling game states."""
+    global game_state
+    if game_state == "menu":
+        pass
+    elif game_state == "playing":
+        alien.update()
+        for enemy in enemies:
+            enemy.update()
+        check_collisions()
 
 def draw():
-    screen.fill((20, 20, 40))
+    """Draw elements depending on the current state."""
+    screen.clear()
     if game_state == "menu":
-        screen.draw.text("ALIEN PLATFORMER", center=(WIDTH/2, 80), fontsize=60, color="yellow")
-        for name, rect in menu_buttons.items():
-            if name == "Music":
-                color = "green" if music_on else "red"
-                text = f"Music {'ON' if music_on else 'OFF'}"
-            else:
-                color = "white"
-                text = name
-            screen.draw.filled_rect(rect, (50, 50, 50))
-            screen.draw.text(text, center=rect.center, fontsize=35, color=color)
+        screen.draw.text("Press SPACE to Start", center=(WIDTH / 2, HEIGHT / 2), fontsize=50, color="white")
     elif game_state == "playing":
-        screen.draw.text(f"Score: {score}", (10, 10), color="white")
-        for i in range(alien.lives):
-            screen.blit("heart", (10 + i*35, 40))
-        for platform in platforms:
-            screen.draw.filled_rect(platform, (50, 150, 50))
-        flag.draw()
         alien.draw()
         for enemy in enemies:
             enemy.draw()
-        for bee in bees:
-            bee.draw()
-        for bomb in bombs:
-            bomb.draw()
-        for coin in coins:
-            coin.draw()
-        for (x, y, timer) in explosions:
-            radius = 15 + (5 - timer) * 5
-            screen.draw.filled_circle((x, y), radius, (255, 80, 0))
 
-        if game_over:
-            screen.draw.text("GAME OVER", center=(WIDTH/2, HEIGHT/2), fontsize=60, color="red")
-            screen.draw.text("Press R to restart", center=(WIDTH/2, HEIGHT/2 + 50), fontsize=30, color="white")
-        if victory:
-            screen.draw.text("CONGRATS! LEVEL COMPLETE!", center=(WIDTH/2, HEIGHT/2), fontsize=50, color="yellow")
-            screen.draw.text(f"Final Score: {score}", center=(WIDTH/2, HEIGHT/2 + 50), fontsize=30, color="white")
-            screen.draw.text("Press R to restart", center=(WIDTH/2, HEIGHT/2 + 90), fontsize=25, color="white")
+def check_collisions():
+    """Detect collisions between hero and enemies."""
+    for enemy in enemies:
+        if alien.actor.colliderect(enemy.actor):
+            sounds.explosion.play()
+            reset_game()
+
+def reset_game():
+    """Reset hero and enemies positions."""
+    global game_state
+    alien.actor.pos = (100, HEIGHT - 50)
+    for i, enemy in enumerate(enemies):
+        enemy.actor.x = 300 + (i * 200)
+    game_state = "menu"
+
+def on_key_down(key):
+    """Handle key presses for state transitions."""
+    global game_state
+    if game_state == "menu" and key == keys.SPACE:
+        game_state = "playing"
+
+# ===================== #
+# --- RUN GAME --- #
+# ===================== #
 
 pgzrun.go()
