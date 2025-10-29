@@ -4,7 +4,7 @@ import pgzrun
 # Configurações da janela
 WIDTH = 800
 HEIGHT = 400
-TITLE = "Alien Platformer 👽💣🪙"
+TITLE = "Batalha Alien"
 
 # Ator principal
 alien = Actor("alien")
